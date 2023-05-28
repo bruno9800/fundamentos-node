@@ -1,38 +1,32 @@
 import http from 'node:http'
 import { json } from './middlewares/json.js';
-import { Database } from './database.js';
+import { routes } from './routes.js';
+import { extractQueryParams } from './utils/extract-query-params.js';
 
-
-const database  = new Database();
 
 const server = http.createServer(async (req, res) => {
   const {method, url } = req;
 
   await json(req, res);
 
- 
-  if(method === 'GET' && url === '/users'){
-    const users = database.select('users');
-    return res.end(JSON.stringify(users));
+  const route = routes.find(route => {
+    return route.method === method && route.path.test(url);
+  })
+
+  if(route) {
+    const routeParams = req.url.match(route.path);
+
+    //console.log(extractQueryParams(routeParams.groups.query));
+
+    const { query, ...params} = routeParams.groups;
+
+    req.params = params;
+    req.query = query ?extractQueryParams(query): null;
+
+    return route.handler(req, res);
   }
-
-  if(method === 'POST' && url === '/users'){
-    const {name, email} = req.body;
-    const user = {
-      id: 1,
-      name,
-      email,
-    }
-
-    database.insert('users', user);
-
-    return res.end('Criando usuario');
-  }
-
-
-
   
-  res.end('Hello World!!');
+  return res.writeHead(404).end();
 })
 
 server.listen(3333, () => {
