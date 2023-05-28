@@ -7,47 +7,89 @@ const database  = new Database();
 export const routes = [
   {
     method: 'GET',
-    path: buildRoutePath('/users'),
+    path: buildRoutePath('/tasks'),
     handler: (req, res) => {
-      const users = database.select('users', req.query);
-      return res.end(JSON.stringify(users));
+      const tasks = database.select('tasks', req.query);
+      return res.end(JSON.stringify(tasks));
     }
   },
   {
     method: 'POST',
-    path: buildRoutePath('/users'),
+    path: buildRoutePath('/tasks'),
     handler: (req, res) => {
-        const {name, email} = req.body;
-        const user = {
-          id: randomUUID(),
-          name,
-          email,
+        const {title, description, ...rest} = req.body;
+        if(!title || !description || !!Object.values(rest).length) {
+          return res.writeHead(400).end('requisição invalida invalido');
         }
 
-        database.insert('users', user);
+        const task = {
+          id: randomUUID(),
+          title,
+          description,
+          created_at: new Date(),
+          completed_at: null,
+          updated_at: new Date()
+        }
 
-        return res.end();
+        database.insert('tasks', task);
+
+        return res.writeHead(201).end();
     }
   },
   {
     method: 'DELETE',
-    path: buildRoutePath('/users/:id'),
+    path: buildRoutePath('/tasks/:id'),
     handler: (req, res) => {
         const { id } = req.params;
-
-        database.delete('users', id);
+        try {
+          database.delete('tasks', id);
+        }catch (err) {
+          return res.writeHead(404).end(`${err}`);
+        } 
 
         return res.writeHead(204).end();
     }
   },
   {
     method: 'PUT',
-    path: buildRoutePath('/users/:id'),
+    path: buildRoutePath('/tasks/:id'),
     handler: (req, res) => {
         const { id } = req.params;
-        const { name, email } = req.body;
+        const { title, description, ...rest } = req.body;
+        
+        if(!title || !description || !!Object.values(rest).length) {
+          return res.writeHead(400).end('requisição invalida invalido');
+        }
 
-        database.update('users', id, {email, name});
+
+        try {
+          database.update('tasks', id, {
+            title, 
+            description,
+            updated_at: new Date()
+          });
+        }catch(err) {
+          return res.writeHead(404).end(`${err}`);
+        }
+
+        return res.writeHead(204).end();
+    }
+  },
+  {
+    method: 'PATCH',
+    path: buildRoutePath('/tasks/:id/complete'),
+    handler: (req, res) => {
+        const { id } = req.params;
+
+        try {
+          database.patch('tasks', id, {
+            updated_at: new Date(),
+            completed_at: new Date(),
+          });
+
+        } catch(err) {
+          return res.writeHead(404).end(`${err}`);
+        }
 
         return res.writeHead(204).end();
     }

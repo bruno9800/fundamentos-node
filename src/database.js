@@ -47,8 +47,27 @@ export class Database {
     const rowIndex = this.#database[table].findIndex(row => row.id === id);
 
     if( rowIndex > -1 ) {
-      this.#database[table][rowIndex] = {id, ...data }
+      const { created_at, completed_at } = this.#database[table][rowIndex];
+      this.#database[table][rowIndex] = {id, created_at, completed_at, ...data }
       this.#persist();
+    }else {
+      throw new Error("task does not exists");
+    }
+  }
+
+  patch(table, id, data) {
+    const rowIndex = this.#database[table].findIndex(row => row.id === id);
+
+    if( rowIndex > -1 ) {
+      const { updated_at, completed_at, ...rest} = this.#database[table][rowIndex];
+      this.#database[table][rowIndex] = { 
+        ...rest,
+        updated_at: data.updated_at, 
+        completed_at: !completed_at ? data.completed_at : null,
+      }
+      this.#persist();
+    }else {
+      throw new Error("task does not exists");
     }
   }
 
@@ -59,8 +78,9 @@ export class Database {
       this.#database[table].splice(rowIndex, 1);
 
       this.#persist();
+    } else {
+      throw new Error("task does not exists");
     }
-
   }
 
 }
