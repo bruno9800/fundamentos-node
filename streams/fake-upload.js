@@ -1,23 +1,33 @@
-import { Readable } from "node:stream";
+import { parse } from 'csv-parse'
+import fs from 'node:fs'
 
-class OneToHundredStream extends Readable {
-  index = 1;
-  _read() {
-    const i = this.index++;
+const csvPath = new URL('./tasks.csv', import.meta.url);
 
-   setTimeout(() => {
-    if(i > 100) {
-      this.push(null);
-    } else {
-      const buffer = Buffer.from(String(i));
-      this.push(buffer);
-    }
-   }, 1000);
-}
-}
+const stream = fs.createReadStream(csvPath);
 
-fetch('http://localhost:3334', {
-  method: 'POST',
-  body: new OneToHundredStream(),
-  duplex: "half",
+const csvParse = parse({
+  delimiter: ',',
+  skip_empty_lines: true,
+  from_line: 2
 })
+
+async function csvReadableStream() {
+  const linesParse = stream.pipe(csvParse);
+
+  for await (const row of linesParse) {
+    const [title, description] = row;
+
+    await fetch('http://localhost:3333/tasks', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        title,
+        description,
+      })
+    })
+  }
+}
+
+csvReadableStream();
